@@ -5,7 +5,8 @@ A phone-first shared medication checklist for Tizzy.
 Tizzy Meds is a Vite, React, and TypeScript app deployed on GitHub Pages. It
 uses Firebase anonymous auth and Firestore realtime sync behind a shared
 household link. Each phone signs in anonymously, joins the household named in
-the URL hash, and syncs medication changes, dose checkoffs, and dose notes.
+the URL hash, and syncs medication changes, dose checkoffs, dose notes, and
+health events.
 
 Live app:
 
@@ -40,9 +41,13 @@ the household medication board.
   general notes.
 - Local display name for who logged this.
 - Editable medication list with active/as-needed toggles.
-- History view for logged dose and health events.
-- Firebase anonymous auth and Firestore realtime sync.
-- GitHub Actions CI plus GitHub Pages deployment.
+- History view for logged dose and health events, with a vet-friendly summary
+  that can be copied or exported.
+- Status color schemes for completed, skipped/partial, vomited, and health
+  event entries.
+- Firebase anonymous auth and Firestore realtime sync, with startup sync
+  feedback while shared data loads.
+- GitHub Actions CI, Firestore rules tests, and GitHub Pages deployment.
 
 ## Firebase Setup
 
@@ -83,8 +88,8 @@ Fields represented in the client:
   `annotation`, `isAsNeeded`, `active`.
 - `DoseEvent`: `id`, `medId`, `date`, `status`, `performedBy`, `note`,
   `completedAt`.
-- `HealthEvent`: reserved for the later event tracker with event type,
-  timestamp, logged-by, severity, note, and optional linked dose event.
+- `HealthEvent`: `id`, `type`, `timestamp`, `loggedBy`, `severity`, `note`,
+  and optional `linkedDoseEventId`.
 
 ## Development
 
@@ -95,11 +100,17 @@ npm install
 npm run dev
 npm run lint
 npm test
+npm run test:rules
 npm run build
 ```
 
-The app runs locally at `http://localhost:5173/` during development. If
-Firebase config is missing locally, it falls back to `localStorage` for UI work.
+The app runs locally at `http://localhost:5173/` during development. Add a
+household hash such as `#household=test-household` to exercise the main UI. If
+Firebase config is missing locally, it falls back to `localStorage` for UI work;
+with `.env.local` configured, localhost uses the shared Firestore backend.
 
-GitHub Actions runs lint, tests, build, and GitHub Pages deployment on pushes to
-`main`.
+`npm run test:rules` runs the Firestore emulator security rules suite and
+requires a local Java runtime that is compatible with Firebase Tools.
+
+GitHub Actions runs lint, app tests, Firestore rules tests, build, and GitHub
+Pages deployment on pushes to `main`.
