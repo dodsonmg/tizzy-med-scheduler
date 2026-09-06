@@ -445,7 +445,6 @@ textarea {
 .summary-panel {
   display: grid;
   gap: 14px;
-  margin-top: 14px;
   border-radius: 8px;
   padding: 14px;
 }
