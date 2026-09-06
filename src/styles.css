@@ -10,6 +10,7 @@
   --warning: #986c25;
   --danger: #9b3d33;
   --success: #2f6b43;
+  --event: #4e5fa8;
   --shadow: 0 18px 50px rgba(57, 43, 27, 0.1);
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -328,15 +329,18 @@ textarea {
 
 .dose-card.done {
   border-left: 5px solid var(--success);
+  background: #f0f8f1;
 }
 
 .dose-card.skipped,
 .dose-card.partial {
   border-left: 5px solid var(--warning);
+  background: #fff6df;
 }
 
 .dose-card.vomited {
   border-left: 5px solid var(--danger);
+  background: #fff0ed;
 }
 
 .dose-card-main,
@@ -379,6 +383,26 @@ textarea {
 .status-label {
   flex: 0 0 auto;
   color: var(--muted);
+}
+
+.dose-card.done .status-label,
+.dose-history-item.done strong {
+  background: #dceee0;
+  color: var(--success);
+}
+
+.dose-card.skipped .status-label,
+.dose-card.partial .status-label,
+.dose-history-item.skipped strong,
+.dose-history-item.partial strong {
+  background: #f6e7bd;
+  color: var(--warning);
+}
+
+.dose-card.vomited .status-label,
+.dose-history-item.vomited strong {
+  background: #f3d8d3;
+  color: var(--danger);
 }
 
 .quick-actions {
@@ -493,7 +517,28 @@ textarea {
 }
 
 .health-item {
-  border-left: 5px solid var(--accent);
+  border-left: 5px solid var(--event);
+  background: #f2f3fb;
+}
+
+.dose-history-item.done {
+  border-left: 5px solid var(--success);
+  background: #f7fcf8;
+}
+
+.dose-history-item.skipped,
+.dose-history-item.partial {
+  border-left: 5px solid var(--warning);
+  background: #fffaf0;
+}
+
+.dose-history-item.vomited {
+  border-left: 5px solid var(--danger);
+  background: #fff6f4;
+}
+
+.health-item strong {
+  color: var(--event);
 }
 
 .history-item div,

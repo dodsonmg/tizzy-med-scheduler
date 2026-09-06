@@ -779,7 +779,7 @@ function DoseHistoryItem({
   onDelete: (eventId: string) => void;
 }) {
   return (
-    <article className="history-item">
+    <article className={`history-item dose-history-item ${event.status}`}>
       <div>
         <strong>{medication?.name ?? event.medId}</strong>
         <span>
