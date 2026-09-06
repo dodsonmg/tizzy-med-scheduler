@@ -124,7 +124,7 @@ describe("app interactions", () => {
     expect(screen.getByText("high severity by Michael")).toBeVisible();
     expect(screen.getByText("About ten minutes after dinner.")).toBeVisible();
 
-    await user.click(screen.getByRole("button", { name: "Summary" }));
+    await user.click(screen.getByRole("button", { name: "Vet summary" }));
 
     expect(screen.getByRole("heading", { name: "Vet summary" })).toBeVisible();
     expect(

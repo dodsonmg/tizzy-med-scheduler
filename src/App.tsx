@@ -45,7 +45,7 @@ export function App() {
     healthEvents: [],
   });
   const [activeTab, setActiveTab] = useState<
-    "today" | "events" | "meds" | "history" | "summary"
+    "today" | "events" | "meds" | "history"
   >("today");
 
   useEffect(() => {
@@ -271,7 +271,7 @@ export function App() {
       </section>
 
       <nav className="tabs" aria-label="App sections">
-        {(["today", "events", "history", "summary", "meds"] as const).map((tab) => (
+        {(["today", "events", "history", "meds"] as const).map((tab) => (
           <button
             key={tab}
             type="button"
@@ -282,8 +282,6 @@ export function App() {
               ? "Today"
               : tab === "events"
                 ? "Events"
-                : tab === "summary"
-                  ? "Summary"
                 : tab === "meds"
                   ? "Meds"
                   : "History"}
@@ -319,14 +317,6 @@ export function App() {
           medications={data.medications}
           onDelete={deleteHistoryEvent}
           onDeleteHealthEvent={deleteHealthEvent}
-        />
-      ) : null}
-
-      {activeTab === "summary" ? (
-        <VetSummaryView
-          events={data.events}
-          healthEvents={data.healthEvents}
-          medications={data.medications}
         />
       ) : null}
     </main>
@@ -752,6 +742,7 @@ function HistoryView({
   onDelete: (eventId: string) => void;
   onDeleteHealthEvent: (eventId: string) => void;
 }) {
+  const [showSummary, setShowSummary] = useState(false);
   const medsById = new Map(
     medications.map((medication) => [medication.id, medication]),
   );
@@ -766,7 +757,23 @@ function HistoryView({
 
   return (
     <section className="history-panel" aria-label="History">
-      <h2>History</h2>
+      <div className="section-intro">
+        <h2>History</h2>
+        <button
+          type="button"
+          className="plain-button"
+          onClick={() => setShowSummary((current) => !current)}
+        >
+          {showSummary ? "Hide vet summary" : "Vet summary"}
+        </button>
+      </div>
+      {showSummary ? (
+        <VetSummaryView
+          events={events}
+          healthEvents={healthEvents}
+          medications={medications}
+        />
+      ) : null}
       {timeline.length === 0 ? (
         <p className="empty-state">Nothing has been logged yet.</p>
       ) : (
