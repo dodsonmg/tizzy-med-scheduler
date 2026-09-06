@@ -12,19 +12,44 @@ describe("schedule helpers", () => {
   it("groups active medications by natural timing slot", () => {
     const groups = groupMedsByPeriod(initialMedications, periods);
 
-    expect(groups.find((group) => group.period === "Midday")?.medications).toEqual([
-      expect.objectContaining({
-        name: "Capromorelin",
-        annotation: "As needed",
-        food: "Empty stomach",
-      }),
-    ]);
-    expect(groups.find((group) => group.period === "Bedtime")?.medications).toEqual([
-      expect.objectContaining({
-        name: "Ondansetron",
-        annotation: "As needed, every 8-12 hours",
-      }),
-    ]);
+    expect(groups.find((group) => group.period === "Midday")?.medications).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "Capromorelin",
+          annotation: "As needed",
+          food: "Empty stomach",
+        }),
+      ]),
+    );
+    expect(
+      groups
+        .flatMap((group) => group.medications)
+        .filter((medication) => medication.name === "Ondansetron"),
+    ).toHaveLength(3);
+    expect(groups.find((group) => group.period === "Morning")?.medications).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "ondansetron-am",
+          annotation: "As needed, 8-12 hour spacing",
+        }),
+      ]),
+    );
+    expect(groups.find((group) => group.period === "Midday")?.medications).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "ondansetron-midday",
+          annotation: "As needed, 8-12 hour spacing",
+        }),
+      ]),
+    );
+    expect(groups.find((group) => group.period === "Bedtime")?.medications).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "ondansetron-bedtime",
+          annotation: "As needed, 8-12 hour spacing",
+        }),
+      ]),
+    );
   });
 
   it("uses stable per-day event ids", () => {

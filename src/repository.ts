@@ -5,6 +5,7 @@ import {
   onSnapshot,
   query,
   setDoc,
+  deleteDoc,
   type Firestore,
   type Unsubscribe,
 } from "firebase/firestore";
@@ -18,6 +19,7 @@ export type Repository = {
   ) => Unsubscribe;
   saveMedication: (medication: Medication) => Promise<void>;
   saveDoseEvent: (event: DoseEvent) => Promise<void>;
+  deleteDoseEvent: (eventId: string) => Promise<void>;
   resetStarterMeds: () => Promise<void>;
 };
 
@@ -57,6 +59,13 @@ export function createLocalRepository(): Repository {
           event,
           ...data.events.filter((current) => current.id !== event.id),
         ],
+      };
+      publish();
+    },
+    async deleteDoseEvent(eventId) {
+      data = {
+        ...data,
+        events: data.events.filter((current) => current.id !== eventId),
       };
       publish();
     },
@@ -135,6 +144,9 @@ export function createFirestoreRepository(
     async saveDoseEvent(event) {
       await setDoc(doc(eventsRef, event.id), event);
     },
+    async deleteDoseEvent(eventId) {
+      await deleteDoc(doc(eventsRef, eventId));
+    },
     async resetStarterMeds() {
       await Promise.all(
         initialMedications.map((medication) =>
@@ -175,15 +187,24 @@ async function seedStarterMeds(db: Firestore, householdId: string) {
     "medications",
   );
   const existing = await getDocs(medicationsRef);
-  if (!existing.empty) {
-    return;
-  }
+  const existingIds = new Set(existing.docs.map((item) => item.id));
 
   await Promise.all(
-    initialMedications.map((medication) =>
-      setDoc(doc(medicationsRef, medication.id), medication),
-    ),
+    initialMedications
+      .filter((medication) => !existingIds.has(medication.id))
+      .map((medication) => setDoc(doc(medicationsRef, medication.id), medication)),
   );
+
+  if (existingIds.has("ondansetron")) {
+    await setDoc(
+      doc(medicationsRef, "ondansetron"),
+      {
+        active: false,
+        annotation: "Replaced by morning/midday/bedtime opportunities",
+      },
+      { merge: true },
+    );
+  }
 }
 
 function readLocalData(): AppData {

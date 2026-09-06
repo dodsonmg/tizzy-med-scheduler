@@ -119,6 +119,10 @@ export function App() {
     await repository?.saveDoseEvent(nextEvent);
   }
 
+  async function undoDose(medId: string) {
+    await repository?.deleteDoseEvent(makeEventId(medId, date));
+  }
+
   async function updateMedication(
     medId: string,
     field: keyof Medication,
@@ -213,6 +217,7 @@ export function App() {
           medications={activeMeds}
           eventsByMed={todayEventsByMed}
           onRecord={recordDose}
+          onUndo={undoDose}
         />
       ) : null}
 
@@ -248,10 +253,12 @@ function TodayView({
   medications,
   eventsByMed,
   onRecord,
+  onUndo,
 }: {
   medications: Medication[];
   eventsByMed: Map<string, DoseEvent>;
   onRecord: (medId: string, status: DoseStatus, note?: string) => void;
+  onUndo: (medId: string) => void;
 }) {
   return (
     <section className="today-grid" aria-label="Today's medicine schedule">
@@ -273,6 +280,7 @@ function TodayView({
                   medication={medication}
                   event={eventsByMed.get(medication.id)}
                   onRecord={onRecord}
+                  onUndo={onUndo}
                 />
               ))}
             </div>
@@ -287,10 +295,12 @@ function DoseCard({
   medication,
   event,
   onRecord,
+  onUndo,
 }: {
   medication: Medication;
   event?: DoseEvent;
   onRecord: (medId: string, status: DoseStatus, note?: string) => void;
+  onUndo: (medId: string) => void;
 }) {
   const [note, setNote] = useState(event?.note ?? "");
   const status = event?.status ?? "pending";
@@ -342,6 +352,11 @@ function DoseCard({
         <textarea
           value={note}
           onChange={(change) => setNote(change.target.value)}
+          onBlur={() => {
+            if (event) {
+              onRecord(medication.id, event.status, note);
+            }
+          }}
           placeholder="Optional context"
           rows={2}
         />
@@ -356,6 +371,9 @@ function DoseCard({
               minute: "2-digit",
             })}
           </span>
+          <button type="button" onClick={() => onUndo(medication.id)}>
+            Undo
+          </button>
         </div>
       ) : null}
     </article>
