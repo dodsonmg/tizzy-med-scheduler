@@ -1,0 +1,33 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isMember(householdId) {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/households/$(householdId)/members/$(request.auth.uid));
+    }
+
+    match /households/{householdId} {
+      allow create: if request.auth != null &&
+        request.resource.data.createdBy == request.auth.uid;
+      allow read, update: if isMember(householdId);
+
+      match /members/{userId} {
+        allow create: if request.auth != null && userId == request.auth.uid;
+        allow read, update: if isMember(householdId);
+      }
+
+      match /medications/{medicationId} {
+        allow read, write: if isMember(householdId);
+      }
+
+      match /doseEvents/{eventId} {
+        allow read, write: if isMember(householdId);
+      }
+
+      match /healthEvents/{eventId} {
+        allow read, write: if isMember(householdId);
+      }
+    }
+  }
+}
