@@ -441,7 +441,8 @@ textarea {
 
 .editor-panel,
 .history-panel,
-.events-panel {
+.events-panel,
+.summary-panel {
   display: grid;
   gap: 14px;
   margin-top: 14px;
@@ -451,14 +452,17 @@ textarea {
 
 .editor-list,
 .history-list,
-.event-form {
+.event-form,
+.summary-days,
+.summary-entry-list {
   display: grid;
   gap: 10px;
 }
 
 .editor-card,
 .history-item,
-.recent-events {
+.recent-events,
+.summary-day {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
@@ -539,6 +543,45 @@ textarea {
 
 .health-item strong {
   color: var(--event);
+}
+
+.summary-day {
+  display: grid;
+  gap: 10px;
+}
+
+.summary-day-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 8px;
+}
+
+.summary-day-heading span,
+.summary-entry span,
+.summary-copy-field {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.summary-entry {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.summary-entry p {
+  margin-bottom: 0;
+}
+
+.summary-copy-field {
+  display: grid;
+  gap: 6px;
+  font-weight: 700;
 }
 
 .history-item div,
