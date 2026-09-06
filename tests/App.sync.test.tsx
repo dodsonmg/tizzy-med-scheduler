@@ -15,10 +15,17 @@ vi.mock("../src/firebase", () => ({
     db: {},
     user: { uid: "device-a" },
   }),
+}));
+
+vi.mock("../src/firebaseConfig", () => ({
   hasFirebaseConfig: () => true,
 }));
 
 vi.mock("../src/repository", () => ({
+  createLocalRepository: vi.fn(),
+}));
+
+vi.mock("../src/firestoreRepository", () => ({
   createFirestoreRepository: vi.fn(() => ({
     subscribe(
       onData: (data: AppData) => void,
@@ -30,7 +37,6 @@ vi.mock("../src/repository", () => ({
       return vi.fn();
     },
   })),
-  createLocalRepository: vi.fn(),
 }));
 
 describe("app sync status", () => {

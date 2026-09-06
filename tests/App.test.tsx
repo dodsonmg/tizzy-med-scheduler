@@ -7,6 +7,9 @@ import { App } from "../src/App";
 
 vi.mock("../src/firebase", () => ({
   connectFirebase: vi.fn(),
+}));
+
+vi.mock("../src/firebaseConfig", () => ({
   hasFirebaseConfig: () => false,
 }));
 
