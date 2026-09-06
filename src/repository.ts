@@ -16,6 +16,7 @@ export type Repository = {
   subscribe: (
     onData: (data: AppData) => void,
     onError: (error: Error) => void,
+    onReady?: () => void,
   ) => Unsubscribe;
   saveMedication: (medication: Medication) => Promise<void>;
   saveDoseEvent: (event: DoseEvent) => Promise<void>;
@@ -37,9 +38,10 @@ export function createLocalRepository(): Repository {
   }
 
   return {
-    subscribe(onData) {
+    subscribe(onData, _onError, onReady) {
       listener = onData;
       onData(data);
+      onReady?.();
       return () => {
         listener = null;
       };
@@ -106,13 +108,14 @@ export function createFirestoreRepository(
   const healthEventsRef = collection(db, householdPath, "healthEvents");
 
   return {
-    subscribe(onData, onError) {
+    subscribe(onData, onError, onReady) {
       let medications: Medication[] = [];
       let events: DoseEvent[] = [];
       let healthEvents: HealthEvent[] = [];
       let medsLoaded = false;
       let eventsLoaded = false;
       let healthEventsLoaded = false;
+      let ready = false;
       let stopped = false;
       let unsubMeds: Unsubscribe | null = null;
       let unsubEvents: Unsubscribe | null = null;
@@ -121,11 +124,14 @@ export function createFirestoreRepository(
       const publish = () => {
         if (medsLoaded && eventsLoaded && healthEventsLoaded) {
           onData({ medications, events, healthEvents });
+          if (!ready) {
+            ready = true;
+            onReady?.();
+          }
         }
       };
 
       ensureHouseholdMembership(db, householdId, userId)
-        .then(() => seedStarterMeds(db, householdId))
         .then(() => {
           if (stopped) {
             return;
@@ -164,6 +170,8 @@ export function createFirestoreRepository(
             },
             onError,
           );
+
+          seedStarterMeds(db, householdId).catch(onError);
         })
         .catch(onError);
 

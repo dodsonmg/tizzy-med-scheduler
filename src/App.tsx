@@ -27,7 +27,7 @@ import type { HealthEvent, HealthEventType, HealthSeverity } from "./types";
 
 const DEVICE_NAME_KEY = "tizzy-med-device-name";
 
-type SyncStatus = "connecting" | "synced" | "local" | "error";
+type SyncStatus = "connecting" | "syncing" | "synced" | "local" | "error";
 
 export function App() {
   const date = todayKey();
@@ -59,6 +59,8 @@ export function App() {
         return;
       }
 
+      setSyncStatus("connecting");
+
       if (!hasFirebaseConfig()) {
         if (!ignore) {
           setRepository(createLocalRepository());
@@ -73,7 +75,7 @@ export function App() {
           setRepository(
             createFirestoreRepository(services.db, householdId, services.user.uid),
           );
-          setSyncStatus("synced");
+          setSyncStatus("syncing");
         }
       } catch (error) {
         if (!ignore) {
@@ -96,10 +98,16 @@ export function App() {
       return undefined;
     }
 
-    return repository.subscribe(setData, (error) => {
-      setSyncStatus("error");
-      setErrorMessage(error.message);
-    });
+    return repository.subscribe(
+      setData,
+      (error) => {
+        setSyncStatus("error");
+        setErrorMessage(error.message);
+      },
+      () => {
+        setSyncStatus((current) => (current === "syncing" ? "synced" : current));
+      },
+    );
   }, [repository]);
 
   useEffect(() => {
@@ -472,6 +480,9 @@ function syncLabel(status: SyncStatus) {
   }
   if (status === "local") {
     return "Local preview mode";
+  }
+  if (status === "syncing") {
+    return "Syncing shared data";
   }
   if (status === "error") {
     return "Sync needs attention";
