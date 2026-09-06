@@ -1,4 +1,5 @@
 const HOUSEHOLD_PREFIX = "household=";
+const LAST_HOUSEHOLD_KEY = "tizzy-med-last-household";
 
 export function randomHouseholdId() {
   const bytes = new Uint8Array(10);
@@ -18,10 +19,22 @@ export function householdIdFromHash(hash: string) {
 export function ensureHouseholdId() {
   const existing = householdIdFromHash(globalThis.location.hash);
   if (existing) {
+    rememberHouseholdId(existing);
     return existing;
   }
 
+  const remembered = globalThis.localStorage.getItem(LAST_HOUSEHOLD_KEY);
+  if (remembered) {
+    globalThis.history.replaceState(null, "", `#${HOUSEHOLD_PREFIX}${remembered}`);
+    return remembered;
+  }
+
   const created = randomHouseholdId();
+  rememberHouseholdId(created);
   globalThis.history.replaceState(null, "", `#${HOUSEHOLD_PREFIX}${created}`);
   return created;
+}
+
+function rememberHouseholdId(householdId: string) {
+  globalThis.localStorage.setItem(LAST_HOUSEHOLD_KEY, householdId);
 }

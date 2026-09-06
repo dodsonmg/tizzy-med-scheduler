@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ensureHouseholdId,
   householdIdFromHash,
@@ -6,6 +6,19 @@ import {
 } from "../src/household";
 
 describe("household links", () => {
+  const store = new Map<string, string>();
+
+  beforeEach(() => {
+    store.clear();
+    vi.unstubAllGlobals();
+    vi.stubGlobal("localStorage", {
+      getItem: vi.fn((key: string) => store.get(key) ?? null),
+      setItem: vi.fn((key: string, value: string) => {
+        store.set(key, value);
+      }),
+    });
+  });
+
   it("reads a household id from the URL hash", () => {
     expect(householdIdFromHash("#household=abc123")).toBe("abc123");
     expect(householdIdFromHash("#tab=today&household=tizzy")).toBe("tizzy");
@@ -28,6 +41,20 @@ describe("household links", () => {
       null,
       "",
       `#household=${householdId}`,
+    );
+  });
+
+  it("reuses the remembered household when launched without a hash", () => {
+    store.set("tizzy-med-last-household", "remembered-household");
+    vi.stubGlobal("location", { hash: "" });
+    const replaceState = vi.fn();
+    vi.stubGlobal("history", { replaceState });
+
+    expect(ensureHouseholdId()).toBe("remembered-household");
+    expect(replaceState).toHaveBeenCalledWith(
+      null,
+      "",
+      "#household=remembered-household",
     );
   });
 });
