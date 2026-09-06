@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { connectFirebase, hasFirebaseConfig } from "./firebase";
+import { hasFirebaseConfig } from "./firebaseConfig";
 import {
   createHouseholdId,
   householdIdFromInput,
@@ -18,7 +18,6 @@ import {
   todayKey,
 } from "./schedule";
 import {
-  createFirestoreRepository,
   createLocalRepository,
   type Repository,
 } from "./repository";
@@ -70,6 +69,10 @@ export function App() {
       }
 
       try {
+        const [{ connectFirebase }, { createFirestoreRepository }] = await Promise.all([
+          import("./firebase"),
+          import("./firestoreRepository"),
+        ]);
         const services = await connectFirebase();
         if (!ignore) {
           setRepository(
