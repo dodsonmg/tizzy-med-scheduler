@@ -67,7 +67,7 @@ describe("app interactions", () => {
 
     const doseCard = firstDoseCard("Prednisone");
     await user.type(doseCard.getByLabelText("Note"), "Ate half breakfast first.");
-    await user.click(doseCard.getByRole("button", { name: "Done" }));
+    await user.click(doseCard.getByRole("button", { name: "Vomited" }));
 
     const savedCard = firstDoseCard("Prednisone");
     expect(await savedCard.findByText(/Logged by Michael/)).toBeVisible();
@@ -79,6 +79,11 @@ describe("app interactions", () => {
     const restoredCard = firstDoseCard("Prednisone");
     expect(restoredCard.getByDisplayValue("Ate half breakfast first.")).toBeVisible();
     expect(restoredCard.getByText(/Logged by Michael/)).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "History" }));
+    const historyItem = screen.getByText("Vomited after by Michael").closest("article");
+
+    expect(historyItem).toHaveClass("dose-history-item", "vomited");
   });
 
   it("switches tabs and edits medication fields", async () => {
