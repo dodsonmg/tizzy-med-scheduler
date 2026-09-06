@@ -46,7 +46,7 @@ export function App() {
     healthEvents: [],
   });
   const [activeTab, setActiveTab] = useState<
-    "today" | "events" | "meds" | "history"
+    "today" | "events" | "meds" | "history" | "summary"
   >("today");
 
   useEffect(() => {
@@ -260,7 +260,7 @@ export function App() {
       </section>
 
       <nav className="tabs" aria-label="App sections">
-        {(["today", "events", "meds", "history"] as const).map((tab) => (
+        {(["today", "events", "history", "summary", "meds"] as const).map((tab) => (
           <button
             key={tab}
             type="button"
@@ -271,6 +271,8 @@ export function App() {
               ? "Today"
               : tab === "events"
                 ? "Events"
+                : tab === "summary"
+                  ? "Summary"
                 : tab === "meds"
                   ? "Meds"
                   : "History"}
@@ -306,6 +308,14 @@ export function App() {
           medications={data.medications}
           onDelete={deleteHistoryEvent}
           onDeleteHealthEvent={deleteHealthEvent}
+        />
+      ) : null}
+
+      {activeTab === "summary" ? (
+        <VetSummaryView
+          events={data.events}
+          healthEvents={data.healthEvents}
+          medications={data.medications}
         />
       ) : null}
     </main>
@@ -769,6 +779,110 @@ function HistoryView({
   );
 }
 
+function VetSummaryView({
+  events,
+  healthEvents,
+  medications,
+}: {
+  events: DoseEvent[];
+  healthEvents: HealthEvent[];
+  medications: Medication[];
+}) {
+  const [copied, setCopied] = useState(false);
+  const medsById = new Map(
+    medications.map((medication) => [medication.id, medication]),
+  );
+  const days = groupTimelineByDay(events, healthEvents);
+  const summaryText = makeVetSummaryText(days, medsById);
+
+  async function copySummary() {
+    await navigator.clipboard?.writeText(summaryText);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1800);
+  }
+
+  return (
+    <section className="summary-panel" aria-label="Vet summary">
+      <div className="section-intro">
+        <h2>Vet summary</h2>
+        <button type="button" className="plain-button" onClick={copySummary}>
+          {copied ? "Copied" : "Copy summary"}
+        </button>
+      </div>
+
+      {days.length === 0 ? (
+        <p className="empty-state">Nothing has been logged yet.</p>
+      ) : (
+        <div className="summary-days">
+          {days.map((day) => (
+            <article className="summary-day" key={day.date}>
+              <div className="summary-day-heading">
+                <h3>{formatSummaryDate(day.date)}</h3>
+                <span>
+                  {day.items.length} {day.items.length === 1 ? "entry" : "entries"}
+                </span>
+              </div>
+              <div className="summary-entry-list">
+                {day.items.map((item) =>
+                  item.kind === "dose" ? (
+                    <DoseSummaryEntry
+                      event={item.event}
+                      medication={medsById.get(item.event.medId)}
+                      key={`dose:${item.event.id}`}
+                    />
+                  ) : (
+                    <HealthSummaryEntry
+                      event={item.event}
+                      key={`health:${item.event.id}`}
+                    />
+                  ),
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+
+      <label className="summary-copy-field">
+        <span>Copy/export text</span>
+        <textarea value={summaryText} readOnly rows={10} />
+      </label>
+    </section>
+  );
+}
+
+function DoseSummaryEntry({
+  event,
+  medication,
+}: {
+  event: DoseEvent;
+  medication?: Medication;
+}) {
+  return (
+    <div className={`summary-entry dose-history-item ${event.status}`}>
+      <strong>{medication?.name ?? event.medId}</strong>
+      <span>
+        {statusLabels[event.status]} by {event.performedBy} at{" "}
+        {formatSummaryTime(event.completedAt)}
+      </span>
+      {event.note ? <p>{event.note}</p> : null}
+    </div>
+  );
+}
+
+function HealthSummaryEntry({ event }: { event: HealthEvent }) {
+  return (
+    <div className="summary-entry health-item">
+      <strong>{healthEventLabels[event.type]}</strong>
+      <span>
+        {event.severity ? `${event.severity} severity by ` : "Logged by "}
+        {event.loggedBy} at {formatSummaryTime(event.occurredAt)}
+      </span>
+      {event.note ? <p>{event.note}</p> : null}
+    </div>
+  );
+}
+
 function DoseHistoryItem({
   event,
   medication,
@@ -840,6 +954,101 @@ function HealthEventItem({
       {event.note ? <p>{event.note}</p> : null}
     </article>
   );
+}
+
+type TimelineItem =
+  | { kind: "dose"; event: DoseEvent }
+  | { kind: "health"; event: HealthEvent };
+
+type SummaryDay = {
+  date: string;
+  items: TimelineItem[];
+};
+
+function groupTimelineByDay(
+  events: DoseEvent[],
+  healthEvents: HealthEvent[],
+): SummaryDay[] {
+  const items: TimelineItem[] = [
+    ...events.map((event) => ({ kind: "dose" as const, event })),
+    ...healthEvents.map((event) => ({ kind: "health" as const, event })),
+  ].sort((a, b) => itemTime(b).localeCompare(itemTime(a)));
+  const days = new Map<string, TimelineItem[]>();
+
+  for (const item of items) {
+    const date =
+      item.kind === "dose" ? item.event.date : todayKey(new Date(item.event.occurredAt));
+    days.set(date, [...(days.get(date) ?? []), item]);
+  }
+
+  return Array.from(days, ([date, dayItems]) => ({ date, items: dayItems }));
+}
+
+function makeVetSummaryText(
+  days: SummaryDay[],
+  medsById: Map<string, Medication>,
+) {
+  if (days.length === 0) {
+    return "Tizzy vet summary\n\nNo medication doses or health events logged yet.";
+  }
+
+  return [
+    "Tizzy vet summary",
+    "",
+    ...days.flatMap((day) => [
+      formatSummaryDate(day.date),
+      ...day.items.map((item) =>
+        item.kind === "dose"
+          ? formatDoseSummaryLine(item.event, medsById.get(item.event.medId))
+          : formatHealthSummaryLine(item.event),
+      ),
+      "",
+    ]),
+  ]
+    .join("\n")
+    .trimEnd();
+}
+
+function formatDoseSummaryLine(event: DoseEvent, medication?: Medication) {
+  const details = [
+    `${formatSummaryTime(event.completedAt)} med: ${medication?.name ?? event.medId}`,
+    statusLabels[event.status].toLowerCase(),
+    `by ${event.performedBy}`,
+    event.note,
+  ].filter(Boolean);
+
+  return `- ${details.join("; ")}`;
+}
+
+function formatHealthSummaryLine(event: HealthEvent) {
+  const details = [
+    `${formatSummaryTime(event.occurredAt)} event: ${healthEventLabels[event.type]}`,
+    event.severity ? `${event.severity} severity` : "",
+    `by ${event.loggedBy}`,
+    event.note,
+  ].filter(Boolean);
+
+  return `- ${details.join("; ")}`;
+}
+
+function itemTime(item: TimelineItem) {
+  return item.kind === "dose" ? item.event.completedAt : item.event.occurredAt;
+}
+
+function formatSummaryDate(date: string) {
+  return new Date(`${date}T12:00:00`).toLocaleDateString([], {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatSummaryTime(date: string) {
+  return new Date(date).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 function toDatetimeLocal(date: Date) {
