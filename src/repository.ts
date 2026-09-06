@@ -10,7 +10,7 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 import { initialMedications } from "./medications";
-import type { AppData, DoseEvent, Medication } from "./types";
+import type { AppData, DoseEvent, HealthEvent, Medication } from "./types";
 
 export type Repository = {
   subscribe: (
@@ -20,6 +20,8 @@ export type Repository = {
   saveMedication: (medication: Medication) => Promise<void>;
   saveDoseEvent: (event: DoseEvent) => Promise<void>;
   deleteDoseEvent: (eventId: string) => Promise<void>;
+  saveHealthEvent: (event: HealthEvent) => Promise<void>;
+  deleteHealthEvent: (eventId: string) => Promise<void>;
   resetStarterMeds: () => Promise<void>;
 };
 
@@ -69,8 +71,25 @@ export function createLocalRepository(): Repository {
       };
       publish();
     },
+    async saveHealthEvent(event) {
+      data = {
+        ...data,
+        healthEvents: [
+          event,
+          ...data.healthEvents.filter((current) => current.id !== event.id),
+        ],
+      };
+      publish();
+    },
+    async deleteHealthEvent(eventId) {
+      data = {
+        ...data,
+        healthEvents: data.healthEvents.filter((current) => current.id !== eventId),
+      };
+      publish();
+    },
     async resetStarterMeds() {
-      data = { medications: initialMedications, events: [] };
+      data = { medications: initialMedications, events: [], healthEvents: [] };
       publish();
     },
   };
@@ -84,20 +103,24 @@ export function createFirestoreRepository(
   const householdPath = `households/${householdId}`;
   const medicationsRef = collection(db, householdPath, "medications");
   const eventsRef = collection(db, householdPath, "doseEvents");
+  const healthEventsRef = collection(db, householdPath, "healthEvents");
 
   return {
     subscribe(onData, onError) {
       let medications: Medication[] = [];
       let events: DoseEvent[] = [];
+      let healthEvents: HealthEvent[] = [];
       let medsLoaded = false;
       let eventsLoaded = false;
+      let healthEventsLoaded = false;
       let stopped = false;
       let unsubMeds: Unsubscribe | null = null;
       let unsubEvents: Unsubscribe | null = null;
+      let unsubHealthEvents: Unsubscribe | null = null;
 
       const publish = () => {
-        if (medsLoaded && eventsLoaded) {
-          onData({ medications, events });
+        if (medsLoaded && eventsLoaded && healthEventsLoaded) {
+          onData({ medications, events, healthEvents });
         }
       };
 
@@ -129,6 +152,18 @@ export function createFirestoreRepository(
             },
             onError,
           );
+
+          unsubHealthEvents = onSnapshot(
+            query(healthEventsRef),
+            (snapshot) => {
+              healthEvents = snapshot.docs
+                .map((item) => item.data() as HealthEvent)
+                .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
+              healthEventsLoaded = true;
+              publish();
+            },
+            onError,
+          );
         })
         .catch(onError);
 
@@ -136,6 +171,7 @@ export function createFirestoreRepository(
         stopped = true;
         unsubMeds?.();
         unsubEvents?.();
+        unsubHealthEvents?.();
       };
     },
     async saveMedication(medication) {
@@ -146,6 +182,12 @@ export function createFirestoreRepository(
     },
     async deleteDoseEvent(eventId) {
       await deleteDoc(doc(eventsRef, eventId));
+    },
+    async saveHealthEvent(event) {
+      await setDoc(doc(healthEventsRef, event.id), event);
+    },
+    async deleteHealthEvent(eventId) {
+      await deleteDoc(doc(healthEventsRef, eventId));
     },
     async resetStarterMeds() {
       await Promise.all(
@@ -210,7 +252,7 @@ async function seedStarterMeds(db: Firestore, householdId: string) {
 function readLocalData(): AppData {
   const stored = window.localStorage.getItem(STORAGE_KEY);
   if (!stored) {
-    return { medications: initialMedications, events: [] };
+    return { medications: initialMedications, events: [], healthEvents: [] };
   }
 
   try {
@@ -218,8 +260,9 @@ function readLocalData(): AppData {
     return {
       medications: parsed.medications ?? initialMedications,
       events: parsed.events ?? [],
+      healthEvents: parsed.healthEvents ?? [],
     };
   } catch {
-    return { medications: initialMedications, events: [] };
+    return { medications: initialMedications, events: [], healthEvents: [] };
   }
 }

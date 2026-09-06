@@ -3,6 +3,7 @@ import { initialMedications, periods } from "../src/medications";
 import {
   countCompletedToday,
   groupMedsByPeriod,
+  healthEventLabels,
   makeEventId,
   todayKey,
 } from "../src/schedule";
@@ -54,6 +55,18 @@ describe("schedule helpers", () => {
 
   it("uses stable per-day event ids", () => {
     expect(makeEventId("same", "2026-09-06")).toBe("2026-09-06:same");
+  });
+
+  it("labels supported health event types", () => {
+    expect(healthEventLabels).toMatchObject({
+      ate: "Ate",
+      drank: "Drank",
+      vomited: "Vomited",
+      stool: "Stool",
+      energy: "Energy",
+      symptom: "Symptom",
+      note: "Note",
+    });
   });
 
   it("counts non-pending events as completed for the day", () => {
