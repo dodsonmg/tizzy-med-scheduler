@@ -267,7 +267,7 @@ textarea {
   top: 0;
   z-index: 5;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 4px;
   border-radius: 8px;
   padding: 4px;
@@ -416,7 +416,8 @@ textarea {
 }
 
 .editor-panel,
-.history-panel {
+.history-panel,
+.events-panel {
   display: grid;
   gap: 14px;
   margin-top: 14px;
@@ -425,13 +426,15 @@ textarea {
 }
 
 .editor-list,
-.history-list {
+.history-list,
+.event-form {
   display: grid;
   gap: 10px;
 }
 
 .editor-card,
-.history-item {
+.history-item,
+.recent-events {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
@@ -463,6 +466,34 @@ textarea {
 .history-item {
   display: grid;
   gap: 8px;
+}
+
+.event-form {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 12px;
+}
+
+.event-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.event-note {
+  grid-column: 1 / -1;
+}
+
+.recent-events {
+  display: grid;
+  gap: 10px;
+}
+
+.health-item {
+  border-left: 5px solid var(--accent);
 }
 
 .history-item div,
@@ -526,5 +557,13 @@ textarea {
 
   .editor-card {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .event-form {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .event-form .section-intro {
+    grid-column: 1 / -1;
   }
 }

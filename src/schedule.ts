@@ -1,4 +1,10 @@
-import type { DoseEvent, DoseStatus, Medication, Period } from "./types";
+import type {
+  DoseEvent,
+  DoseStatus,
+  HealthEventType,
+  Medication,
+  Period,
+} from "./types";
 
 export const statusLabels: Record<DoseStatus, string> = {
   pending: "Pending",
@@ -6,6 +12,16 @@ export const statusLabels: Record<DoseStatus, string> = {
   skipped: "Skipped",
   vomited: "Vomited after",
   partial: "Partial dose",
+};
+
+export const healthEventLabels: Record<HealthEventType, string> = {
+  ate: "Ate",
+  drank: "Drank",
+  vomited: "Vomited",
+  stool: "Stool",
+  energy: "Energy",
+  symptom: "Symptom",
+  note: "Note",
 };
 
 export function todayKey(now = new Date()) {
@@ -28,6 +44,10 @@ export function formatDay(now = new Date()) {
 
 export function makeEventId(medId: string, date: string) {
   return `${date}:${medId}`;
+}
+
+export function makeHealthEventId(now = new Date()) {
+  return `health:${now.toISOString()}:${crypto.randomUUID()}`;
 }
 
 export function groupMedsByPeriod(medications: Medication[], periods: Period[]) {

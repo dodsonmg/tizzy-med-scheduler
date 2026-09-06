@@ -1,6 +1,15 @@
 export type Period = "Morning" | "Midday" | "Evening" | "Bedtime";
 export type FoodRule = "With food" | "Empty stomach" | "With or without food";
 export type DoseStatus = "pending" | "done" | "skipped" | "vomited" | "partial";
+export type HealthEventType =
+  | "ate"
+  | "drank"
+  | "vomited"
+  | "stool"
+  | "energy"
+  | "symptom"
+  | "note";
+export type HealthSeverity = "low" | "medium" | "high";
 
 export type Medication = {
   id: string;
@@ -26,11 +35,11 @@ export type DoseEvent = {
 
 export type HealthEvent = {
   id: string;
-  type: "ate" | "drank" | "vomited" | "stool" | "energy" | "symptom" | "note";
+  type: HealthEventType;
   occurredAt: string;
   loggedAt: string;
   loggedBy: string;
-  severity?: "low" | "medium" | "high";
+  severity?: HealthSeverity;
   note: string;
   linkedDoseEventId?: string;
 };
@@ -38,4 +47,5 @@ export type HealthEvent = {
 export type AppData = {
   medications: Medication[];
   events: DoseEvent[];
+  healthEvents: HealthEvent[];
 };

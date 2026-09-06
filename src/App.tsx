@@ -12,6 +12,8 @@ import {
   formatDay,
   groupMedsByPeriod,
   makeEventId,
+  makeHealthEventId,
+  healthEventLabels,
   statusLabels,
   todayKey,
 } from "./schedule";
@@ -21,6 +23,7 @@ import {
   type Repository,
 } from "./repository";
 import type { AppData, DoseEvent, DoseStatus, Medication } from "./types";
+import type { HealthEvent, HealthEventType, HealthSeverity } from "./types";
 
 const DEVICE_NAME_KEY = "tizzy-med-device-name";
 
@@ -40,10 +43,11 @@ export function App() {
   const [data, setData] = useState<AppData>({
     medications: initialMedications,
     events: [],
+    healthEvents: [],
   });
-  const [activeTab, setActiveTab] = useState<"today" | "meds" | "history">(
-    "today",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "today" | "events" | "meds" | "history"
+  >("today");
 
   useEffect(() => {
     let ignore = false;
@@ -151,6 +155,30 @@ export function App() {
     await repository?.deleteDoseEvent(eventId);
   }
 
+  async function recordHealthEvent(
+    type: HealthEventType,
+    occurredAt: string,
+    severity: HealthSeverity | "",
+    note: string,
+  ) {
+    const loggedAt = new Date();
+    const nextEvent: HealthEvent = {
+      id: makeHealthEventId(loggedAt),
+      type,
+      occurredAt: new Date(occurredAt).toISOString(),
+      loggedAt: loggedAt.toISOString(),
+      loggedBy: deviceName.trim() || "Unknown",
+      note,
+      ...(severity ? { severity } : {}),
+    };
+
+    await repository?.saveHealthEvent(nextEvent);
+  }
+
+  async function deleteHealthEvent(eventId: string) {
+    await repository?.deleteHealthEvent(eventId);
+  }
+
   async function updateMedication(
     medId: string,
     field: keyof Medication,
@@ -232,14 +260,20 @@ export function App() {
       </section>
 
       <nav className="tabs" aria-label="App sections">
-        {(["today", "meds", "history"] as const).map((tab) => (
+        {(["today", "events", "meds", "history"] as const).map((tab) => (
           <button
             key={tab}
             type="button"
             className={activeTab === tab ? "active" : ""}
             onClick={() => setActiveTab(tab)}
           >
-            {tab === "today" ? "Today" : tab === "meds" ? "Meds" : "History"}
+            {tab === "today"
+              ? "Today"
+              : tab === "events"
+                ? "Events"
+                : tab === "meds"
+                  ? "Meds"
+                  : "History"}
           </button>
         ))}
       </nav>
@@ -253,6 +287,10 @@ export function App() {
         />
       ) : null}
 
+      {activeTab === "events" ? (
+        <EventsView events={data.healthEvents} onRecord={recordHealthEvent} />
+      ) : null}
+
       {activeTab === "meds" ? (
         <MedicationEditor
           medications={data.medications}
@@ -264,11 +302,114 @@ export function App() {
       {activeTab === "history" ? (
         <HistoryView
           events={data.events}
+          healthEvents={data.healthEvents}
           medications={data.medications}
           onDelete={deleteHistoryEvent}
+          onDeleteHealthEvent={deleteHealthEvent}
         />
       ) : null}
     </main>
+  );
+}
+
+const healthEventTypes = Object.keys(healthEventLabels) as HealthEventType[];
+
+function EventsView({
+  events,
+  onRecord,
+}: {
+  events: HealthEvent[];
+  onRecord: (
+    type: HealthEventType,
+    occurredAt: string,
+    severity: HealthSeverity | "",
+    note: string,
+  ) => void;
+}) {
+  const [type, setType] = useState<HealthEventType>("ate");
+  const [occurredAt, setOccurredAt] = useState(() => toDatetimeLocal(new Date()));
+  const [severity, setSeverity] = useState<HealthSeverity | "">("");
+  const [note, setNote] = useState("");
+  const recentEvents = events.slice(0, 5);
+
+  return (
+    <section className="events-panel" aria-label="Health event logger">
+      <form
+        className="event-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onRecord(type, occurredAt, severity, note.trim());
+          setOccurredAt(toDatetimeLocal(new Date()));
+          setSeverity("");
+          setNote("");
+        }}
+      >
+        <div className="section-intro">
+          <h2>Log event</h2>
+          <button type="submit" className="plain-button">
+            Save event
+          </button>
+        </div>
+        <label>
+          <span>Type</span>
+          <select
+            value={type}
+            onChange={(event) => setType(event.target.value as HealthEventType)}
+          >
+            {healthEventTypes.map((eventType) => (
+              <option key={eventType} value={eventType}>
+                {healthEventLabels[eventType]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>When</span>
+          <input
+            type="datetime-local"
+            value={occurredAt}
+            onChange={(event) => setOccurredAt(event.target.value)}
+            required
+          />
+        </label>
+        <label>
+          <span>Severity</span>
+          <select
+            value={severity}
+            onChange={(event) =>
+              setSeverity(event.target.value as HealthSeverity | "")
+            }
+          >
+            <option value="">None</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+        </label>
+        <label className="event-note">
+          <span>Note</span>
+          <textarea
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder="Optional details"
+            rows={3}
+          />
+        </label>
+      </form>
+
+      <div className="recent-events" aria-label="Recent health events">
+        <h2>Recent events</h2>
+        {recentEvents.length === 0 ? (
+          <p className="empty-state">No health events have been logged yet.</p>
+        ) : (
+          <div className="history-list">
+            {recentEvents.map((event) => (
+              <HealthEventItem event={event} key={event.id} />
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -576,52 +717,132 @@ function MedicationEditor({
 
 function HistoryView({
   events,
+  healthEvents,
   medications,
   onDelete,
+  onDeleteHealthEvent,
 }: {
   events: DoseEvent[];
+  healthEvents: HealthEvent[];
   medications: Medication[];
   onDelete: (eventId: string) => void;
+  onDeleteHealthEvent: (eventId: string) => void;
 }) {
   const medsById = new Map(
     medications.map((medication) => [medication.id, medication]),
   );
+  const timeline = [
+    ...events.map((event) => ({ kind: "dose" as const, event })),
+    ...healthEvents.map((event) => ({ kind: "health" as const, event })),
+  ].sort((a, b) => {
+    const aTime = a.kind === "dose" ? a.event.completedAt : a.event.occurredAt;
+    const bTime = b.kind === "dose" ? b.event.completedAt : b.event.occurredAt;
+    return bTime.localeCompare(aTime);
+  });
 
   return (
-    <section className="history-panel" aria-label="Dose history">
+    <section className="history-panel" aria-label="History">
       <h2>History</h2>
-      {events.length === 0 ? (
-        <p className="empty-state">No doses have been logged yet.</p>
+      {timeline.length === 0 ? (
+        <p className="empty-state">Nothing has been logged yet.</p>
       ) : (
         <div className="history-list">
-          {events.map((event) => {
-            const medication = medsById.get(event.medId);
-            return (
-              <article className="history-item" key={event.id}>
-                <div>
-                  <strong>{medication?.name ?? event.medId}</strong>
-                  <span>
-                    {statusLabels[event.status]} by {event.performedBy}
-                  </span>
-                </div>
-                <div className="history-meta">
-                  <time dateTime={event.completedAt}>
-                    {event.date} -{" "}
-                    {new Date(event.completedAt).toLocaleTimeString([], {
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })}
-                  </time>
-                  <button type="button" onClick={() => onDelete(event.id)}>
-                    Delete
-                  </button>
-                </div>
-                {event.note ? <p>{event.note}</p> : null}
-              </article>
-            );
-          })}
+          {timeline.map((item) =>
+            item.kind === "dose" ? (
+              <DoseHistoryItem
+                event={item.event}
+                medication={medsById.get(item.event.medId)}
+                onDelete={onDelete}
+                key={`dose:${item.event.id}`}
+              />
+            ) : (
+              <HealthEventItem
+                event={item.event}
+                onDelete={onDeleteHealthEvent}
+                key={`health:${item.event.id}`}
+              />
+            ),
+          )}
         </div>
       )}
     </section>
   );
+}
+
+function DoseHistoryItem({
+  event,
+  medication,
+  onDelete,
+}: {
+  event: DoseEvent;
+  medication?: Medication;
+  onDelete: (eventId: string) => void;
+}) {
+  return (
+    <article className="history-item">
+      <div>
+        <strong>{medication?.name ?? event.medId}</strong>
+        <span>
+          {statusLabels[event.status]} by {event.performedBy}
+        </span>
+      </div>
+      <div className="history-meta">
+        <time dateTime={event.completedAt}>
+          {event.date} -{" "}
+          {new Date(event.completedAt).toLocaleTimeString([], {
+            hour: "numeric",
+            minute: "2-digit",
+          })}
+        </time>
+        <button type="button" onClick={() => onDelete(event.id)}>
+          Delete
+        </button>
+      </div>
+      {event.note ? <p>{event.note}</p> : null}
+    </article>
+  );
+}
+
+function HealthEventItem({
+  event,
+  onDelete,
+}: {
+  event: HealthEvent;
+  onDelete?: (eventId: string) => void;
+}) {
+  return (
+    <article className="history-item health-item">
+      <div>
+        <strong>{healthEventLabels[event.type]}</strong>
+        <span>
+          {event.severity ? `${event.severity} severity by ` : "Logged by "}
+          {event.loggedBy}
+        </span>
+      </div>
+      <div className="history-meta">
+        <time dateTime={event.occurredAt}>
+          {new Date(event.occurredAt).toLocaleDateString([], {
+            month: "short",
+            day: "numeric",
+          })}{" "}
+          -{" "}
+          {new Date(event.occurredAt).toLocaleTimeString([], {
+            hour: "numeric",
+            minute: "2-digit",
+          })}
+        </time>
+        {onDelete ? (
+          <button type="button" onClick={() => onDelete(event.id)}>
+            Delete
+          </button>
+        ) : null}
+      </div>
+      {event.note ? <p>{event.note}</p> : null}
+    </article>
+  );
+}
+
+function toDatetimeLocal(date: Date) {
+  const timezoneOffset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 16);
 }
