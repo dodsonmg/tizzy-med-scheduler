@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { connectFirebase, hasFirebaseConfig } from "./firebase";
-import { ensureHouseholdId } from "./household";
+import {
+  createHouseholdId,
+  householdIdFromInput,
+  initialHouseholdId,
+  setHouseholdId as persistHouseholdId,
+} from "./household";
 import { foodRules, initialMedications, periods } from "./medications";
 import {
   countCompletedToday,
@@ -23,7 +28,9 @@ type SyncStatus = "connecting" | "synced" | "local" | "error";
 
 export function App() {
   const date = todayKey();
-  const [householdId] = useState(() => ensureHouseholdId());
+  const [householdId, setHouseholdId] = useState<string | null>(() =>
+    initialHouseholdId(),
+  );
   const [deviceName, setDeviceName] = useState(
     () => window.localStorage.getItem(DEVICE_NAME_KEY) ?? "Michael",
   );
@@ -42,6 +49,12 @@ export function App() {
     let ignore = false;
 
     async function connect() {
+      if (!householdId) {
+        setRepository(null);
+        setSyncStatus("connecting");
+        return;
+      }
+
       if (!hasFirebaseConfig()) {
         if (!ignore) {
           setRepository(createLocalRepository());
@@ -105,6 +118,17 @@ export function App() {
   const completedToday = countCompletedToday(activeMeds, todayEventsByMed);
   const shareUrl = window.location.href;
 
+  function createHousehold() {
+    setHouseholdId(createHouseholdId());
+  }
+
+  function joinHousehold(input: string) {
+    const nextHouseholdId = householdIdFromInput(input);
+    if (nextHouseholdId) {
+      setHouseholdId(persistHouseholdId(nextHouseholdId));
+    }
+  }
+
   async function recordDose(medId: string, status: DoseStatus, note = "") {
     const nextEvent: DoseEvent = {
       id: makeEventId(medId, date),
@@ -152,6 +176,10 @@ export function App() {
       active: true,
     });
     setActiveTab("meds");
+  }
+
+  if (!householdId) {
+    return <StartScreen onCreate={createHousehold} onJoin={joinHousehold} />;
   }
 
   return (
@@ -240,6 +268,49 @@ export function App() {
           onDelete={deleteHistoryEvent}
         />
       ) : null}
+    </main>
+  );
+}
+
+function StartScreen({
+  onCreate,
+  onJoin,
+}: {
+  onCreate: () => void;
+  onJoin: (input: string) => void;
+}) {
+  const [joinValue, setJoinValue] = useState("");
+
+  return (
+    <main className="app-shell start-shell">
+      <section className="start-panel" aria-label="Choose a household">
+        <p className="eyebrow">Shared medication board</p>
+        <h1>Tizzy Meds</h1>
+        <div className="start-actions">
+          <button type="button" className="primary-button" onClick={onCreate}>
+            Create household
+          </button>
+          <form
+            className="join-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              onJoin(joinValue);
+            }}
+          >
+            <label>
+              <span>Join with link or ID</span>
+              <input
+                value={joinValue}
+                onChange={(event) => setJoinValue(event.target.value)}
+                placeholder="Paste household link"
+              />
+            </label>
+            <button type="submit" className="plain-button">
+              Join household
+            </button>
+          </form>
+        </div>
+      </section>
     </main>
   );
 }

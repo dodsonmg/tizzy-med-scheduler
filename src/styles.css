@@ -60,6 +60,46 @@ button {
   padding: 8px 0 14px;
 }
 
+.start-shell {
+  display: grid;
+  place-items: center;
+}
+
+.start-panel {
+  display: grid;
+  gap: 18px;
+  width: min(100%, 520px);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 253, 250, 0.86);
+  box-shadow: var(--shadow);
+  padding: 22px;
+}
+
+.start-actions,
+.join-form {
+  display: grid;
+  gap: 12px;
+}
+
+.primary-button {
+  min-height: 48px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: white;
+  font-weight: 850;
+  padding: 12px;
+}
+
+.join-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .eyebrow {
   margin: 0 0 5px;
   color: var(--accent-strong);

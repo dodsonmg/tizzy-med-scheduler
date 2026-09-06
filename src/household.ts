@@ -16,7 +16,7 @@ export function householdIdFromHash(hash: string) {
   return match?.slice(HOUSEHOLD_PREFIX.length) || null;
 }
 
-export function ensureHouseholdId() {
+export function initialHouseholdId() {
   const existing = householdIdFromHash(globalThis.location.hash);
   if (existing) {
     rememberHouseholdId(existing);
@@ -29,10 +29,33 @@ export function ensureHouseholdId() {
     return remembered;
   }
 
+  return null;
+}
+
+export function createHouseholdId() {
   const created = randomHouseholdId();
-  rememberHouseholdId(created);
-  globalThis.history.replaceState(null, "", `#${HOUSEHOLD_PREFIX}${created}`);
-  return created;
+  return setHouseholdId(created);
+}
+
+export function setHouseholdId(householdId: string) {
+  const trimmed = householdId.trim();
+  rememberHouseholdId(trimmed);
+  globalThis.history.replaceState(null, "", `#${HOUSEHOLD_PREFIX}${trimmed}`);
+  return trimmed;
+}
+
+export function householdIdFromInput(input: string) {
+  const trimmed = input.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const hashIndex = trimmed.indexOf("#");
+  if (hashIndex >= 0) {
+    return householdIdFromHash(trimmed.slice(hashIndex));
+  }
+
+  return trimmed.replace(/^household=/, "") || null;
 }
 
 function rememberHouseholdId(householdId: string) {
