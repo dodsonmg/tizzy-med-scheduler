@@ -2,11 +2,20 @@
 
 A phone-first shared medication checklist for Tizzy.
 
-The first synced implementation uses Firebase anonymous auth plus a shared
+Tizzy Meds is a Vite, React, and TypeScript app deployed on GitHub Pages. It
+uses Firebase anonymous auth and Firestore realtime sync behind a shared
 household link. Each phone signs in anonymously, joins the household named in
-the URL hash, and writes medication changes and dose events to Firestore in
-realtime. If Firebase config is missing locally, the app falls back to
-`localStorage` for UI work.
+the URL hash, and syncs medication changes, dose checkoffs, and dose notes.
+
+Live app:
+
+```text
+https://dodsonmg.github.io/tizzy-med-scheduler/
+```
+
+The full household URL includes a private `#household=...` hash. Do not publish
+that full URL; share it only with people who should be able to view and update
+the household medication board.
 
 ## Current Medication Schedule
 
@@ -21,7 +30,7 @@ realtime. If Firebase config is missing locally, the app falls back to
 | Evening | SAMe | 1 tablet | Empty stomach | Liver protectant |
 | Bedtime | Ondansetron | 1 tablet | With or without food | As needed, every 8-12 hours |
 
-## Features In This Slice
+## Current Features
 
 - Today view grouped by Morning, Midday, Evening, and Bedtime.
 - As-needed meds appear in their natural timing slot with an annotation.
@@ -33,7 +42,7 @@ realtime. If Firebase config is missing locally, the app falls back to
 - Firebase anonymous auth and Firestore realtime sync.
 - GitHub Actions CI plus GitHub Pages deployment.
 
-## Planned Backend Path
+## Firebase Setup
 
 The deployed app expects Firebase config values as Vite environment variables.
 For local development, copy `.env.example` to `.env.local` and fill in the
@@ -58,8 +67,6 @@ VITE_FIREBASE_APP_ID
 
 Firestore collections:
 
-Recommended Firebase collections:
-
 ```text
 households/{householdId}
 households/{householdId}/medications/{medicationId}
@@ -77,32 +84,9 @@ Fields represented in the client:
 - `HealthEvent`: reserved for the later event tracker with event type,
   timestamp, logged-by, severity, note, and optional linked dose event.
 
-## Later Event Tracker
+## Development
 
-- Add an Events tab for ate, drank, vomited, stool, energy, symptoms, and notes.
-- Show medication dose history and health events together by day.
-- Add a Vet Summary view for appointments and phone calls.
-- Add export/copy support for the summary.
-- Add Google sign-in and explicit household invitations if shared-link access
-  starts feeling too loose.
-
-## Testing Plan
-
-Current:
-
-- `npm run lint`
-- `npm test`
-- `npm run build`
-- Unit tests for schedule grouping, event IDs, completion counts, and household
-  links.
-
-Next:
-
-- Add browser interaction tests for checkoff, notes, tab switching, and local
-  persistence.
-- Add Firebase emulator tests when Firestore sync lands.
-
-## Commands
+Useful commands:
 
 ```bash
 npm install
@@ -112,4 +96,8 @@ npm test
 npm run build
 ```
 
-The app currently runs locally at `http://localhost:3000/` during development.
+The app runs locally at `http://localhost:5173/` during development. If
+Firebase config is missing locally, it falls back to `localStorage` for UI work.
+
+GitHub Actions runs lint, tests, build, and GitHub Pages deployment on pushes to
+`main`.
