@@ -123,6 +123,10 @@ export function App() {
     await repository?.deleteDoseEvent(makeEventId(medId, date));
   }
 
+  async function deleteHistoryEvent(eventId: string) {
+    await repository?.deleteDoseEvent(eventId);
+  }
+
   async function updateMedication(
     medId: string,
     field: keyof Medication,
@@ -230,7 +234,11 @@ export function App() {
       ) : null}
 
       {activeTab === "history" ? (
-        <HistoryView events={data.events} medications={data.medications} />
+        <HistoryView
+          events={data.events}
+          medications={data.medications}
+          onDelete={deleteHistoryEvent}
+        />
       ) : null}
     </main>
   );
@@ -498,9 +506,11 @@ function MedicationEditor({
 function HistoryView({
   events,
   medications,
+  onDelete,
 }: {
   events: DoseEvent[];
   medications: Medication[];
+  onDelete: (eventId: string) => void;
 }) {
   const medsById = new Map(
     medications.map((medication) => [medication.id, medication]),
@@ -523,13 +533,18 @@ function HistoryView({
                     {statusLabels[event.status]} by {event.performedBy}
                   </span>
                 </div>
-                <time dateTime={event.completedAt}>
-                  {event.date} -{" "}
-                  {new Date(event.completedAt).toLocaleTimeString([], {
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })}
-                </time>
+                <div className="history-meta">
+                  <time dateTime={event.completedAt}>
+                    {event.date} -{" "}
+                    {new Date(event.completedAt).toLocaleTimeString([], {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </time>
+                  <button type="button" onClick={() => onDelete(event.id)}>
+                    Delete
+                  </button>
+                </div>
                 {event.note ? <p>{event.note}</p> : null}
               </article>
             );

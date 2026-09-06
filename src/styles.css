@@ -426,7 +426,7 @@ textarea {
 }
 
 .history-item div,
-.history-item time {
+.history-meta {
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -436,6 +436,18 @@ textarea {
 .history-item time {
   color: var(--muted);
   font-size: 0.82rem;
+}
+
+.history-meta {
+  align-items: center;
+}
+
+.history-meta button {
+  border: 0;
+  background: transparent;
+  color: var(--danger);
+  font-size: 0.82rem;
+  font-weight: 800;
 }
 
 .history-item p {
