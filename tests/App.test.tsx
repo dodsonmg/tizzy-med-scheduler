@@ -102,6 +102,25 @@ describe("app interactions", () => {
     expect(screen.getByRole("heading", { name: "Appetite helper" })).toBeVisible();
   });
 
+  it("deletes medications from the schedule", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    await renderHouseholdApp();
+
+    await user.click(screen.getByRole("button", { name: "Meds" }));
+    const medicationCard = screen.getByDisplayValue("Capromorelin").closest("article");
+    expect(medicationCard).not.toBeNull();
+    await user.click(
+      within(medicationCard as HTMLElement).getByRole("button", {
+        name: "Delete medication",
+      }),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Today" }));
+
+    expect(screen.queryByRole("heading", { name: "Capromorelin" })).not.toBeInTheDocument();
+  });
+
   it("logs health events and shows them in history", async () => {
     const user = userEvent.setup();
     await renderHouseholdApp();

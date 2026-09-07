@@ -109,6 +109,9 @@ describeWithFirestore("firestore security rules", () => {
       db.doc("households/tizzy/doseEvents/2026-09-06:prednisone").get(),
     );
     await assertSucceeds(db.doc("households/tizzy/healthEvents/event-a").get());
+    await assertSucceeds(
+      db.doc("households/tizzy/medications/prednisone").delete(),
+    );
   });
 
   it("prevents non-members from reading or writing another household", async () => {

@@ -40,7 +40,8 @@ the household medication board.
 - Event logging for appetite, drinking, pee, vomiting, stool, energy,
   symptoms, and general notes.
 - Local display name for who logged this.
-- Editable medication list with active/as-needed toggles.
+- Editable medication list with active/as-needed toggles and medication
+  deletion.
 - History view for logged dose and health events, with a vet-friendly summary
   that can be copied or exported.
 - Status color schemes for completed, skipped/partial, vomited, and health

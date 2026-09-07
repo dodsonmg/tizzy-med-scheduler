@@ -263,6 +263,15 @@ textarea {
   padding: 12px;
 }
 
+.danger-button {
+  border: 1px solid #efc7be;
+  border-radius: 8px;
+  background: #fff6f4;
+  color: var(--danger);
+  font-weight: 800;
+  padding: 12px;
+}
+
 .tabs {
   position: sticky;
   top: 0;
@@ -631,6 +640,10 @@ textarea {
 
   .plain-button {
     grid-column: auto;
+  }
+
+  .editor-card .danger-button {
+    grid-column: 1 / -1;
   }
 
   .today-grid {

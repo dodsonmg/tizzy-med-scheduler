@@ -100,6 +100,9 @@ export function createFirestoreRepository(
     async saveMedication(medication) {
       await setDoc(doc(medicationsRef, medication.id), medication);
     },
+    async deleteMedication(medicationId) {
+      await deleteDoc(doc(medicationsRef, medicationId));
+    },
     async saveDoseEvent(event) {
       await setDoc(doc(eventsRef, event.id), event);
     },
