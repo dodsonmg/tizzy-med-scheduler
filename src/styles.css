@@ -175,13 +175,15 @@ textarea {
 }
 
 .share-panel,
+.notification-panel,
 .summary-strip {
   display: grid;
   gap: 10px;
   margin: 10px 0 14px;
 }
 
-.share-panel {
+.share-panel,
+.notification-panel {
   grid-template-columns: 1fr auto;
   align-items: center;
   border: 1px solid var(--line);
@@ -197,7 +199,8 @@ textarea {
   min-width: 0;
 }
 
-.share-panel span {
+.share-panel span,
+.notification-panel span {
   overflow: hidden;
   color: var(--muted);
   font-size: 0.76rem;
@@ -205,7 +208,8 @@ textarea {
   white-space: nowrap;
 }
 
-.share-panel button {
+.share-panel button,
+.notification-panel button {
   min-height: 38px;
   border: 1px solid var(--line);
   border-radius: 8px;
