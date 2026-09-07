@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { initialMedications } from "../src/medications";
 import type { AppData } from "../src/types";
@@ -55,6 +55,7 @@ describe("app sync status", () => {
     render(<App />);
 
     expect(await screen.findByText("Syncing shared data")).toBeVisible();
+    await waitFor(() => expect(syncControls.onReady).toBeTruthy());
 
     syncControls.onData?.({
       medications: initialMedications,
