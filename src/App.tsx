@@ -25,8 +25,10 @@ import {
 import {
   notificationPermission,
   notificationStatus,
+  pendingPeriodReminders,
   readNotificationPreference,
   requestNotificationPermission,
+  schedulePeriodReminderNotifications,
   saveNotificationPreference,
   type NotificationPermissionState,
   type NotificationPreference,
@@ -159,7 +161,27 @@ export function App() {
     [date, data.events],
   );
   const completedToday = countCompletedToday(dueMeds, todayEventsByMed);
+  const currentNotificationStatus = notificationStatus(
+    notificationPreference,
+    notificationPermissionState,
+  );
+  const periodReminderPlans = useMemo(
+    () =>
+      pendingPeriodReminders({
+        medications: dueMeds,
+        eventsByMed: todayEventsByMed,
+      }),
+    [dueMeds, todayEventsByMed],
+  );
   const shareUrl = window.location.href;
+
+  useEffect(() => {
+    if (currentNotificationStatus !== "ready") {
+      return undefined;
+    }
+
+    return schedulePeriodReminderNotifications(periodReminderPlans);
+  }, [currentNotificationStatus, periodReminderPlans]);
 
   function createHousehold() {
     setHouseholdId(createHouseholdId());
@@ -297,10 +319,8 @@ export function App() {
       {errorMessage ? <p className="error-banner">{errorMessage}</p> : null}
 
       <NotificationPanel
-        status={notificationStatus(
-          notificationPreference,
-          notificationPermissionState,
-        )}
+        status={currentNotificationStatus}
+        reminderCount={periodReminderPlans.length}
         onEnable={enableNotifications}
         onDisable={disableNotifications}
       />
@@ -537,14 +557,16 @@ function syncLabel(status: SyncStatus) {
 
 function NotificationPanel({
   status,
+  reminderCount,
   onEnable,
   onDisable,
 }: {
   status: ReturnType<typeof notificationStatus>;
+  reminderCount: number;
   onEnable: () => void;
   onDisable: () => void;
 }) {
-  const label = notificationStatusLabel(status);
+  const label = notificationStatusLabel(status, reminderCount);
   const canEnable = status === "off" || status === "needs-permission";
 
   return (
@@ -567,7 +589,10 @@ function NotificationPanel({
   );
 }
 
-function notificationStatusLabel(status: ReturnType<typeof notificationStatus>) {
+function notificationStatusLabel(
+  status: ReturnType<typeof notificationStatus>,
+  reminderCount: number,
+) {
   if (status === "unsupported") {
     return "Not supported in this browser";
   }
@@ -575,7 +600,9 @@ function notificationStatusLabel(status: ReturnType<typeof notificationStatus>) 
     return "Blocked by browser settings";
   }
   if (status === "ready") {
-    return "Enabled on this device";
+    return reminderCount === 1
+      ? "Enabled, 1 reminder today"
+      : `Enabled, ${reminderCount} reminders today`;
   }
   if (status === "needs-permission") {
     return "Permission needed";

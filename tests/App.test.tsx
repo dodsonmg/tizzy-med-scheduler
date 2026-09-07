@@ -114,7 +114,7 @@ describe("app interactions", () => {
     await user.click(screen.getByRole("button", { name: "Enable" }));
 
     expect(requestPermission).toHaveBeenCalledOnce();
-    expect(await screen.findByText("Enabled on this device")).toBeVisible();
+    expect(await screen.findByText(/Enabled,/)).toBeVisible();
     expect(window.localStorage.getItem("tizzy-med-notifications")).toBe("on");
   });
 
