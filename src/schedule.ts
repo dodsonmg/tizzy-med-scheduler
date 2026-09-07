@@ -17,6 +17,7 @@ export const statusLabels: Record<DoseStatus, string> = {
 export const healthEventLabels: Record<HealthEventType, string> = {
   ate: "Ate",
   drank: "Drank",
+  pee: "Pee",
   vomited: "Vomited",
   stool: "Stool",
   energy: "Energy",

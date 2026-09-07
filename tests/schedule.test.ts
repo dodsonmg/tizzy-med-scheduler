@@ -61,6 +61,7 @@ describe("schedule helpers", () => {
     expect(healthEventLabels).toMatchObject({
       ate: "Ate",
       drank: "Drank",
+      pee: "Pee",
       vomited: "Vomited",
       stool: "Stool",
       energy: "Energy",
