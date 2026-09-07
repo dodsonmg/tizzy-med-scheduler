@@ -1,6 +1,7 @@
 export type Period = "Morning" | "Midday" | "Evening" | "Bedtime";
 export type FoodRule = "With food" | "Empty stomach" | "With or without food";
 export type DoseStatus = "pending" | "done" | "skipped" | "vomited" | "partial";
+export type MedicationScheduleType = "daily" | "weekly" | "monthly";
 export type HealthEventType =
   | "ate"
   | "drank"
@@ -21,6 +22,11 @@ export type Medication = {
   purpose: string;
   annotation: string;
   isAsNeeded?: boolean;
+  scheduleType?: MedicationScheduleType;
+  interval?: number;
+  anchorDate?: string;
+  daysOfWeek?: number[];
+  dayOfMonth?: number;
   active: boolean;
 };
 
