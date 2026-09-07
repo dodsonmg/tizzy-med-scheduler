@@ -9,6 +9,7 @@ import {
 import { foodRules, initialMedications, periods } from "./medications";
 import {
   countCompletedToday,
+  dueMedicationsForDate,
   formatDay,
   groupMedsByPeriod,
   makeEventId,
@@ -21,7 +22,13 @@ import {
   createLocalRepository,
   type Repository,
 } from "./repository";
-import type { AppData, DoseEvent, DoseStatus, Medication } from "./types";
+import type {
+  AppData,
+  DoseEvent,
+  DoseStatus,
+  Medication,
+  MedicationScheduleType,
+} from "./types";
 import type { HealthEvent, HealthEventType, HealthSeverity } from "./types";
 
 const DEVICE_NAME_KEY = "tizzy-med-device-name";
@@ -121,6 +128,10 @@ export function App() {
     () => data.medications.filter((medication) => medication.active),
     [data.medications],
   );
+  const dueMeds = useMemo(
+    () => dueMedicationsForDate(data.medications, date),
+    [data.medications, date],
+  );
   const todayEventsByMed = useMemo(
     () =>
       new Map(
@@ -130,7 +141,7 @@ export function App() {
       ),
     [date, data.events],
   );
-  const completedToday = countCompletedToday(activeMeds, todayEventsByMed);
+  const completedToday = countCompletedToday(dueMeds, todayEventsByMed);
   const shareUrl = window.location.href;
 
   function createHousehold() {
@@ -190,17 +201,13 @@ export function App() {
     await repository?.deleteHealthEvent(eventId);
   }
 
-  async function updateMedication(
-    medId: string,
-    field: keyof Medication,
-    value: string | boolean,
-  ) {
+  async function updateMedication(medId: string, patch: Partial<Medication>) {
     const medication = data.medications.find((current) => current.id === medId);
     if (!medication) {
       return;
     }
 
-    await repository?.saveMedication({ ...medication, [field]: value });
+    await repository?.saveMedication({ ...medication, ...patch });
   }
 
   async function deleteMedication(medId: string) {
@@ -216,6 +223,7 @@ export function App() {
       food: "With food",
       purpose: "",
       annotation: "Daily",
+      scheduleType: "daily",
       active: true,
     });
     setActiveTab("meds");
@@ -261,13 +269,13 @@ export function App() {
       <section className="summary-strip" aria-label="Daily progress">
         <div>
           <strong>
-            {completedToday}/{activeMeds.length}
+            {completedToday}/{dueMeds.length}
           </strong>
           <span>actions logged today</span>
         </div>
         <div>
-          <strong>{activeMeds.filter((med) => med.isAsNeeded).length}</strong>
-          <span>as-needed opportunities</span>
+          <strong>{activeMeds.length}</strong>
+          <span>active medications</span>
         </div>
         <button className="plain-button" type="button" onClick={addMedication}>
           Add med
@@ -295,7 +303,7 @@ export function App() {
 
       {activeTab === "today" ? (
         <TodayView
-          medications={activeMeds}
+          medications={dueMeds}
           eventsByMed={todayEventsByMed}
           onRecord={recordDose}
           onUndo={undoDose}
@@ -499,14 +507,16 @@ function TodayView({
   onRecord: (medId: string, status: DoseStatus, note?: string) => void;
   onUndo: (medId: string) => void;
 }) {
+  const medicationGroups = groupMedsByPeriod(medications, periods).filter(
+    ({ medications }) => medications.length > 0,
+  );
+
   return (
     <section className="today-grid" aria-label="Today's medicine schedule">
-      {groupMedsByPeriod(medications, periods).map(({ period, medications }) => {
-        if (medications.length === 0) {
-          return null;
-        }
-
-        return (
+      {medicationGroups.length === 0 ? (
+        <p className="empty-state">No medications due today.</p>
+      ) : (
+        medicationGroups.map(({ period, medications }) => (
           <section className="period-section" key={period}>
             <div className="period-heading">
               <h2>{period}</h2>
@@ -524,8 +534,8 @@ function TodayView({
               ))}
             </div>
           </section>
-        );
-      })}
+        ))
+      )}
     </section>
   );
 }
@@ -626,11 +636,7 @@ function MedicationEditor({
   onReset,
 }: {
   medications: Medication[];
-  onUpdate: (
-    medId: string,
-    field: keyof Medication,
-    value: string | boolean,
-  ) => void;
+  onUpdate: (medId: string, patch: Partial<Medication>) => void;
   onDelete: (medId: string) => void;
   onReset: () => void;
 }) {
@@ -643,112 +649,243 @@ function MedicationEditor({
         </button>
       </div>
       <div className="editor-list">
-        {medications.map((medication) => (
-          <article className="editor-card" key={medication.id}>
-            <label>
-              <span>Name</span>
-              <input
-                value={medication.name}
-                onChange={(event) =>
-                  onUpdate(medication.id, "name", event.target.value)
-                }
-              />
-            </label>
-            <label>
-              <span>Dose</span>
-              <input
-                value={medication.dose}
-                onChange={(event) =>
-                  onUpdate(medication.id, "dose", event.target.value)
-                }
-              />
-            </label>
-            <label>
-              <span>Period</span>
-              <select
-                value={medication.period}
-                onChange={(event) =>
-                  onUpdate(medication.id, "period", event.target.value)
-                }
-              >
-                {periods.map((period) => (
-                  <option key={period}>{period}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Food</span>
-              <select
-                value={medication.food}
-                onChange={(event) =>
-                  onUpdate(medication.id, "food", event.target.value)
-                }
-              >
-                {foodRules.map((rule) => (
-                  <option key={rule}>{rule}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Annotation</span>
-              <input
-                value={medication.annotation}
-                onChange={(event) =>
-                  onUpdate(medication.id, "annotation", event.target.value)
-                }
-              />
-            </label>
-            <label>
-              <span>Purpose</span>
-              <input
-                value={medication.purpose}
-                onChange={(event) =>
-                  onUpdate(medication.id, "purpose", event.target.value)
-                }
-              />
-            </label>
-            <div className="toggle-row">
+        {medications.map((medication) => {
+          const scheduleType = medication.scheduleType ?? "daily";
+          const anchorDate = medication.anchorDate ?? todayKey();
+          const selectedWeekdays =
+            medication.daysOfWeek ?? [weekdayValueForDate(anchorDate)];
+
+          return (
+            <article className="editor-card" key={medication.id}>
               <label>
+                <span>Name</span>
                 <input
-                  type="checkbox"
-                  checked={Boolean(medication.isAsNeeded)}
+                  value={medication.name}
                   onChange={(event) =>
-                    onUpdate(medication.id, "isAsNeeded", event.target.checked)
+                    onUpdate(medication.id, { name: event.target.value })
                   }
                 />
-                <span>As needed</span>
               </label>
               <label>
+                <span>Dose</span>
                 <input
-                  type="checkbox"
-                  checked={Boolean(medication.active)}
+                  value={medication.dose}
                   onChange={(event) =>
-                    onUpdate(medication.id, "active", event.target.checked)
+                    onUpdate(medication.id, { dose: event.target.value })
                   }
                 />
-                <span>Active</span>
               </label>
-            </div>
-            <button
-              type="button"
-              className="danger-button"
-              onClick={() => {
-                if (
-                  window.confirm(
-                    `Delete ${medication.name}? Past history stays in History.`,
-                  )
-                ) {
-                  onDelete(medication.id);
-                }
-              }}
-            >
-              Delete medication
-            </button>
-          </article>
-        ))}
+              <label>
+                <span>Period</span>
+                <select
+                  value={medication.period}
+                  onChange={(event) =>
+                    onUpdate(medication.id, {
+                      period: event.target.value as Medication["period"],
+                    })
+                  }
+                >
+                  {periods.map((period) => (
+                    <option key={period}>{period}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Food</span>
+                <select
+                  value={medication.food}
+                  onChange={(event) =>
+                    onUpdate(medication.id, {
+                      food: event.target.value as Medication["food"],
+                    })
+                  }
+                >
+                  {foodRules.map((rule) => (
+                    <option key={rule}>{rule}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Annotation</span>
+                <input
+                  value={medication.annotation}
+                  onChange={(event) =>
+                    onUpdate(medication.id, { annotation: event.target.value })
+                  }
+                />
+              </label>
+              <label>
+                <span>Purpose</span>
+                <input
+                  value={medication.purpose}
+                  onChange={(event) =>
+                    onUpdate(medication.id, { purpose: event.target.value })
+                  }
+                />
+              </label>
+              <div className="schedule-fields">
+                <label>
+                  <span>Schedule</span>
+                  <select
+                    value={scheduleType}
+                    onChange={(event) => {
+                      const nextScheduleType = event.target
+                        .value as MedicationScheduleType;
+                      onUpdate(medication.id, {
+                        scheduleType: nextScheduleType,
+                        interval: medication.interval ?? 1,
+                        anchorDate,
+                        ...(nextScheduleType === "weekly" &&
+                        !medication.daysOfWeek?.length
+                          ? { daysOfWeek: [weekdayValueForDate(anchorDate)] }
+                          : {}),
+                        ...(nextScheduleType === "monthly" &&
+                        !medication.dayOfMonth
+                          ? { dayOfMonth: dayOfMonthValue(anchorDate) }
+                          : {}),
+                      });
+                    }}
+                  >
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Every</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={medication.interval ?? 1}
+                    onChange={(event) =>
+                      onUpdate(medication.id, {
+                        interval: Math.max(
+                          1,
+                          Math.floor(event.target.valueAsNumber || 1),
+                        ),
+                      })
+                    }
+                  />
+                </label>
+                <label>
+                  <span>Anchor date</span>
+                  <input
+                    type="date"
+                    value={anchorDate}
+                    onChange={(event) =>
+                      onUpdate(medication.id, { anchorDate: event.target.value })
+                    }
+                  />
+                </label>
+              </div>
+              {scheduleType === "weekly" ? (
+                <fieldset className="weekday-fields">
+                  <legend>Due days</legend>
+                  {weekdays.map((weekday) => (
+                    <label key={weekday.value}>
+                      <input
+                        type="checkbox"
+                        checked={selectedWeekdays.includes(weekday.value)}
+                        onChange={(event) => {
+                          const nextWeekdays = event.target.checked
+                            ? [...selectedWeekdays, weekday.value]
+                            : selectedWeekdays.filter(
+                                (selected) => selected !== weekday.value,
+                              );
+                          onUpdate(medication.id, {
+                            daysOfWeek: nextWeekdays.sort((a, b) => a - b),
+                          });
+                        }}
+                      />
+                      <span>{weekday.label}</span>
+                    </label>
+                  ))}
+                </fieldset>
+              ) : null}
+              {scheduleType === "monthly" ? (
+                <label>
+                  <span>Day of month</span>
+                  <select
+                    value={medication.dayOfMonth ?? 1}
+                    onChange={(event) =>
+                      onUpdate(medication.id, {
+                        dayOfMonth: Number(event.target.value),
+                      })
+                    }
+                  >
+                    {daysOfMonth.map((day) => (
+                      <option key={day} value={day}>
+                        {day}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              <div className="toggle-row">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(medication.isAsNeeded)}
+                    onChange={(event) =>
+                      onUpdate(medication.id, {
+                        isAsNeeded: event.target.checked,
+                      })
+                    }
+                  />
+                  <span>As needed</span>
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(medication.active)}
+                    onChange={(event) =>
+                      onUpdate(medication.id, { active: event.target.checked })
+                    }
+                  />
+                  <span>Active</span>
+                </label>
+              </div>
+              <button
+                type="button"
+                className="danger-button"
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `Delete ${medication.name}? Past history stays in History.`,
+                    )
+                  ) {
+                    onDelete(medication.id);
+                  }
+                }}
+              >
+                Delete medication
+              </button>
+            </article>
+          );
+        })}
       </div>
     </section>
   );
+}
+
+const weekdays = [
+  { value: 0, label: "Sun" },
+  { value: 1, label: "Mon" },
+  { value: 2, label: "Tue" },
+  { value: 3, label: "Wed" },
+  { value: 4, label: "Thu" },
+  { value: 5, label: "Fri" },
+  { value: 6, label: "Sat" },
+];
+
+const daysOfMonth = Array.from({ length: 31 }, (_value, index) => index + 1);
+
+function weekdayValueForDate(date: string) {
+  return new Date(`${date}T00:00:00.000Z`).getUTCDay();
+}
+
+function dayOfMonthValue(date: string) {
+  return new Date(`${date}T00:00:00.000Z`).getUTCDate();
 }
 
 function HistoryView({
