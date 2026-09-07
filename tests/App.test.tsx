@@ -4,6 +4,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App";
+import { todayKey } from "../src/schedule";
 
 vi.mock("../src/firebase", () => ({
   connectFirebase: vi.fn(),
@@ -102,6 +103,61 @@ describe("app interactions", () => {
     expect(screen.getByRole("heading", { name: "Appetite helper" })).toBeVisible();
   });
 
+  it("configures weekly medications and hides them when they are not due today", async () => {
+    const user = userEvent.setup();
+    await renderHouseholdApp();
+
+    await user.click(screen.getByRole("button", { name: "Meds" }));
+    const medicationCard = screen.getByDisplayValue("Capromorelin").closest("article");
+
+    if (!medicationCard) {
+      throw new Error("Could not find Capromorelin editor card");
+    }
+
+    const editor = within(medicationCard);
+    const todayLabel = weekdayLabelForOffset(0);
+    const tomorrowLabel = weekdayLabelForOffset(1);
+
+    await user.selectOptions(editor.getByLabelText("Schedule"), "weekly");
+    const todayCheckbox = editor.getByLabelText(todayLabel);
+    const tomorrowCheckbox = editor.getByLabelText(tomorrowLabel);
+
+    if (todayCheckbox instanceof HTMLInputElement && todayCheckbox.checked) {
+      await user.click(todayCheckbox);
+    }
+    if (tomorrowCheckbox instanceof HTMLInputElement && !tomorrowCheckbox.checked) {
+      await user.click(tomorrowCheckbox);
+    }
+
+    await user.click(screen.getByRole("button", { name: "Today" }));
+
+    expect(
+      screen.queryByRole("heading", { name: "Capromorelin" }),
+    ).not.toBeInTheDocument();
+    const progress = within(screen.getByLabelText("Daily progress"));
+    expect(progress.getByText("0/9")).toBeVisible();
+    expect(progress.getByText("10")).toBeVisible();
+    expect(progress.getByText("active medications")).toBeVisible();
+  });
+
+  it("shows monthly medication schedule controls", async () => {
+    const user = userEvent.setup();
+    await renderHouseholdApp();
+
+    await user.click(screen.getByRole("button", { name: "Meds" }));
+    const medicationCard = screen.getByDisplayValue("Prednisone").closest("article");
+
+    if (!medicationCard) {
+      throw new Error("Could not find Prednisone editor card");
+    }
+
+    const editor = within(medicationCard);
+    await user.selectOptions(editor.getByLabelText("Schedule"), "monthly");
+    await user.selectOptions(editor.getByLabelText("Day of month"), "15");
+
+    expect(editor.getByLabelText("Day of month")).toHaveValue("15");
+  });
+
   it("deletes medications from the schedule", async () => {
     const user = userEvent.setup();
     vi.spyOn(window, "confirm").mockReturnValue(true);
@@ -164,3 +220,10 @@ describe("app interactions", () => {
     );
   });
 });
+
+function weekdayLabelForOffset(offsetDays: number) {
+  const date = new Date(`${todayKey()}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + offsetDays);
+
+  return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][date.getUTCDay()];
+}
