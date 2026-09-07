@@ -4,6 +4,7 @@ export type DoseStatus = "pending" | "done" | "skipped" | "vomited" | "partial";
 export type HealthEventType =
   | "ate"
   | "drank"
+  | "pee"
   | "vomited"
   | "stool"
   | "energy"

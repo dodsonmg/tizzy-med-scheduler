@@ -37,8 +37,8 @@ the household medication board.
 - As-needed meds appear in their natural timing slot with an annotation.
 - Dose statuses: Done, Skipped, Vomited after, and Partial dose.
 - Optional per-dose notes.
-- Event logging for appetite, drinking, vomiting, stool, energy, symptoms, and
-  general notes.
+- Event logging for appetite, drinking, pee, vomiting, stool, energy,
+  symptoms, and general notes.
 - Local display name for who logged this.
 - Editable medication list with active/as-needed toggles.
 - History view for logged dose and health events, with a vet-friendly summary
