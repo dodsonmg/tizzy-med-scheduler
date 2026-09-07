@@ -10,6 +10,7 @@ export type Repository = {
     onReady?: () => void,
   ) => Unsubscribe;
   saveMedication: (medication: Medication) => Promise<void>;
+  deleteMedication: (medicationId: string) => Promise<void>;
   saveDoseEvent: (event: DoseEvent) => Promise<void>;
   deleteDoseEvent: (eventId: string) => Promise<void>;
   saveHealthEvent: (event: HealthEvent) => Promise<void>;
@@ -44,6 +45,15 @@ export function createLocalRepository(): Repository {
           ...data.medications.filter((current) => current.id !== medication.id),
           medication,
         ],
+      };
+      publish();
+    },
+    async deleteMedication(medicationId) {
+      data = {
+        ...data,
+        medications: data.medications.filter(
+          (current) => current.id !== medicationId,
+        ),
       };
       publish();
     },

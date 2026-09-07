@@ -203,6 +203,10 @@ export function App() {
     await repository?.saveMedication({ ...medication, [field]: value });
   }
 
+  async function deleteMedication(medId: string) {
+    await repository?.deleteMedication(medId);
+  }
+
   async function addMedication() {
     await repository?.saveMedication({
       id: `med-${Date.now()}`,
@@ -306,6 +310,7 @@ export function App() {
         <MedicationEditor
           medications={data.medications}
           onUpdate={updateMedication}
+          onDelete={deleteMedication}
           onReset={() => repository?.resetStarterMeds()}
         />
       ) : null}
@@ -617,6 +622,7 @@ function DoseCard({
 function MedicationEditor({
   medications,
   onUpdate,
+  onDelete,
   onReset,
 }: {
   medications: Medication[];
@@ -625,6 +631,7 @@ function MedicationEditor({
     field: keyof Medication,
     value: string | boolean,
   ) => void;
+  onDelete: (medId: string) => void;
   onReset: () => void;
 }) {
   return (
@@ -722,6 +729,21 @@ function MedicationEditor({
                 <span>Active</span>
               </label>
             </div>
+            <button
+              type="button"
+              className="danger-button"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Delete ${medication.name}? Past history stays in History.`,
+                  )
+                ) {
+                  onDelete(medication.id);
+                }
+              }}
+            >
+              Delete medication
+            </button>
           </article>
         ))}
       </div>
