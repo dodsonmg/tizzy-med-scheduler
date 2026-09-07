@@ -22,6 +22,15 @@ import {
   createLocalRepository,
   type Repository,
 } from "./repository";
+import {
+  notificationPermission,
+  notificationStatus,
+  readNotificationPreference,
+  requestNotificationPermission,
+  saveNotificationPreference,
+  type NotificationPermissionState,
+  type NotificationPreference,
+} from "./notifications";
 import type {
   AppData,
   DoseEvent,
@@ -43,6 +52,10 @@ export function App() {
   const [deviceName, setDeviceName] = useState(
     () => window.localStorage.getItem(DEVICE_NAME_KEY) ?? "Michael",
   );
+  const [notificationPreference, setNotificationPreference] =
+    useState<NotificationPreference>(() => readNotificationPreference());
+  const [notificationPermissionState, setNotificationPermissionState] =
+    useState<NotificationPermissionState>(() => notificationPermission());
   const [repository, setRepository] = useState<Repository | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("connecting");
   const [errorMessage, setErrorMessage] = useState("");
@@ -123,6 +136,10 @@ export function App() {
   useEffect(() => {
     window.localStorage.setItem(DEVICE_NAME_KEY, deviceName);
   }, [deviceName]);
+
+  useEffect(() => {
+    saveNotificationPreference(notificationPreference);
+  }, [notificationPreference]);
 
   const activeMeds = useMemo(
     () => data.medications.filter((medication) => medication.active),
@@ -229,6 +246,19 @@ export function App() {
     setActiveTab("meds");
   }
 
+  async function enableNotifications() {
+    const nextPermission = await requestNotificationPermission();
+    setNotificationPermissionState(nextPermission);
+
+    if (nextPermission === "granted") {
+      setNotificationPreference("on");
+    }
+  }
+
+  function disableNotifications() {
+    setNotificationPreference("off");
+  }
+
   if (!householdId) {
     return <StartScreen onCreate={createHousehold} onJoin={joinHousehold} />;
   }
@@ -265,6 +295,15 @@ export function App() {
       </section>
 
       {errorMessage ? <p className="error-banner">{errorMessage}</p> : null}
+
+      <NotificationPanel
+        status={notificationStatus(
+          notificationPreference,
+          notificationPermissionState,
+        )}
+        onEnable={enableNotifications}
+        onDisable={disableNotifications}
+      />
 
       <section className="summary-strip" aria-label="Daily progress">
         <div>
@@ -494,6 +533,54 @@ function syncLabel(status: SyncStatus) {
     return "Sync needs attention";
   }
   return "Connecting";
+}
+
+function NotificationPanel({
+  status,
+  onEnable,
+  onDisable,
+}: {
+  status: ReturnType<typeof notificationStatus>;
+  onEnable: () => void;
+  onDisable: () => void;
+}) {
+  const label = notificationStatusLabel(status);
+  const canEnable = status === "off" || status === "needs-permission";
+
+  return (
+    <section className="notification-panel" aria-label="Notification status">
+      <div>
+        <strong>Reminders</strong>
+        <span>{label}</span>
+      </div>
+      {canEnable ? (
+        <button type="button" onClick={onEnable}>
+          Enable
+        </button>
+      ) : null}
+      {status === "ready" ? (
+        <button type="button" onClick={onDisable}>
+          Disable
+        </button>
+      ) : null}
+    </section>
+  );
+}
+
+function notificationStatusLabel(status: ReturnType<typeof notificationStatus>) {
+  if (status === "unsupported") {
+    return "Not supported in this browser";
+  }
+  if (status === "blocked") {
+    return "Blocked by browser settings";
+  }
+  if (status === "ready") {
+    return "Enabled on this device";
+  }
+  if (status === "needs-permission") {
+    return "Permission needed";
+  }
+  return "Off on this device";
 }
 
 function TodayView({
