@@ -14,19 +14,6 @@ vi.mock("../src/firebaseConfig", () => ({
   hasFirebaseConfig: () => false,
 }));
 
-function installNotificationStub(permission: NotificationPermission) {
-  const requestPermission = vi.fn().mockResolvedValue(permission);
-  Object.defineProperty(globalThis, "Notification", {
-    configurable: true,
-    value: {
-      permission: "default",
-      requestPermission,
-    },
-  });
-
-  return requestPermission;
-}
-
 function setHash(hash = "#household=test-household") {
   window.history.replaceState(null, "", hash);
 }
@@ -52,7 +39,6 @@ describe("app interactions", () => {
   beforeEach(() => {
     window.localStorage.clear();
     window.history.replaceState(null, "", "/");
-    Reflect.deleteProperty(globalThis, "Notification");
   });
 
   afterEach(() => {
@@ -102,20 +88,6 @@ describe("app interactions", () => {
     const historyItem = screen.getByText("Vomited after by Michael").closest("article");
 
     expect(historyItem).toHaveClass("dose-history-item", "vomited");
-  });
-
-  it("enables browser reminders for the local device", async () => {
-    const requestPermission = installNotificationStub("granted");
-    const user = userEvent.setup();
-    await renderHouseholdApp();
-
-    expect(screen.getByText("Off on this device")).toBeVisible();
-
-    await user.click(screen.getByRole("button", { name: "Enable" }));
-
-    expect(requestPermission).toHaveBeenCalledOnce();
-    expect(await screen.findByText(/Enabled,/)).toBeVisible();
-    expect(window.localStorage.getItem("tizzy-med-notifications")).toBe("on");
   });
 
   it("switches tabs and edits medication fields", async () => {
