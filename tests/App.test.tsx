@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App";
@@ -158,6 +158,48 @@ describe("app interactions", () => {
     expect(editor.getByLabelText("Day of month")).toHaveValue("15");
   });
 
+  it("shows a monthly medication today only when its monthly schedule is due", async () => {
+    const user = userEvent.setup();
+    await renderHouseholdApp();
+
+    await user.click(screen.getByRole("button", { name: "Meds" }));
+    const medicationCard = screen.getByDisplayValue("Prednisone").closest("article");
+
+    if (!medicationCard) {
+      throw new Error("Could not find Prednisone editor card");
+    }
+
+    const editor = within(medicationCard);
+    const today = todayKey();
+    const todayDay = new Date(`${today}T00:00:00.000Z`).getUTCDate();
+    const notDueDay = todayDay === 1 ? 2 : 1;
+
+    await user.selectOptions(editor.getByLabelText("Schedule"), "monthly");
+    fireEvent.change(editor.getByLabelText("Anchor date"), {
+      target: { value: previousCalendarMonth(today) },
+    });
+    await user.selectOptions(
+      editor.getByLabelText("Day of month"),
+      String(todayDay),
+    );
+
+    await user.click(screen.getByRole("button", { name: "Today" }));
+    expect(screen.getByRole("heading", { name: "Prednisone" })).toBeVisible();
+
+    await user.click(screen.getByRole("button", { name: "Meds" }));
+    await user.selectOptions(
+      within(screen.getByDisplayValue("Prednisone").closest("article") as HTMLElement).getByLabelText(
+        "Day of month",
+      ),
+      String(notDueDay),
+    );
+    await user.click(screen.getByRole("button", { name: "Today" }));
+
+    expect(
+      screen.queryByRole("heading", { name: "Prednisone" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("deletes medications from the schedule", async () => {
     const user = userEvent.setup();
     vi.spyOn(window, "confirm").mockReturnValue(true);
@@ -226,4 +268,16 @@ function weekdayLabelForOffset(offsetDays: number) {
   date.setUTCDate(date.getUTCDate() + offsetDays);
 
   return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][date.getUTCDay()];
+}
+
+function previousCalendarMonth(date: string) {
+  const current = new Date(`${date}T00:00:00.000Z`);
+  const previousMonth = new Date(
+    Date.UTC(current.getUTCFullYear(), current.getUTCMonth() - 1, 1),
+  );
+  const lastDayOfPreviousMonth = new Date(
+    Date.UTC(current.getUTCFullYear(), current.getUTCMonth(), 0),
+  ).getUTCDate();
+  previousMonth.setUTCDate(Math.min(current.getUTCDate(), lastDayOfPreviousMonth));
+  return previousMonth.toISOString().slice(0, 10);
 }
